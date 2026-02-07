@@ -1,0 +1,139 @@
+# Antigravity Configuration
+
+# Video Processing
+video:
+  fps: 1  # Frames per second to process (reduce for lower API costs)
+  resolution: 720  # Output resolution (480, 720, 1080)
+  
+# Vision Layer
+vision:
+  yolo_model: "yolov8n.pt"  # Nano model for CPU efficiency
+  confidence_threshold: 0.5
+  track_objects: true
+  
+# Gemini API
+gemini:
+  model: "gemini-1.5-pro-latest"
+  vision_model: "gemini-1.5-pro-vision-latest"
+  temperature: 0.7
+  max_tokens: 500
+  
+# Text-to-Speech
+tts:
+  provider: "google"  # "google" or "elevenlabs"
+  google:
+    language_code: "en-US"
+    voice_name: "en-US-Neural2-J"
+    speaking_rate: 1.1  # Slightly faster for sports commentary
+    pitch: 0.0
+  elevenlabs:
+    model_id: "eleven_multilingual_v2"
+    stability: 0.5
+    similarity_boost: 0.75
+    
+# Audio Mixing
+audio:
+  commentary_volume: 0.8  # 0-1
+  background_volume: 0.3  # Lower original audio during commentary
+  ducking_enabled: true
+  
+# Sports Configuration
+sports:
+  cricket:
+    events:
+      - "Wicket"
+      - "Boundary"
+      - "Six"
+      - "Run Out"
+      - "Catch"
+    intensity_keywords:
+      high: ["wicket", "six", "out", "catch"]
+      medium: ["boundary", "four"]
+      low: ["single", "dot ball"]
+      
+  football:
+    events:
+      - "Goal"
+      - "Near Miss"
+      - "Yellow Card"
+      - "Red Card"
+      - "Corner Kick"
+    intensity_keywords:
+      high: ["goal", "red card", "penalty"]
+      medium: ["yellow card", "corner", "free kick"]
+      low: ["pass", "throw in"]
+      
+  f1:
+    events:
+      - "Overtake"
+      - "Pit Stop"
+      - "Crash"
+      - "Leading"
+    intensity_keywords:
+      high: ["crash", "overtake", "podium"]
+      medium: ["pit stop", "fastest lap"]
+      low: ["cruising", "maintaining position"]
+      
+  badminton:
+    events:
+      - "Smash"
+      - "Drop Shot"
+      - "Point Won"
+    intensity_keywords:
+      high: ["smash", "match point"]
+      medium: ["rally", "deuce"]
+      low: ["serve"]
+      
+  kabaddi:
+    events:
+      - "Super Raid"
+      - "Tackle"
+      - "All Out"
+    intensity_keywords:
+      high: ["super raid", "all out"]
+      medium: ["tackle", "bonus point"]
+      low: ["empty raid"]
+
+# Language/Dialect Settings
+languages:
+  english:
+    enabled: true
+    tts_voice: "en-US-Neural2-J"
+    
+  hinglish:
+    enabled: true
+    hindi_percentage: 60
+    tts_voice: "hi-IN-Neural2-A"
+    code_mixing: true
+    
+  tamil:
+    enabled: false
+    tts_voice: "ta-IN-Standard-A"
+    
+  bhojpuri:
+    enabled: false
+    base_language: "hindi"
+    
+# Personas
+personas:
+  professional:
+    tone: "formal"
+    technical_terms: true
+    excitement_level: "moderate"
+    
+  desi:
+    tone: "casual"
+    slang: true
+    excitement_level: "high"
+    humor: true
+    
+  analytical:
+    tone: "informative"
+    stats: true
+    excitement_level: "low"
+
+# Performance
+performance:
+  cache_events: true
+  batch_api_calls: true
+  max_concurrent_requests: 3
