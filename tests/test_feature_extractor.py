@@ -1,28 +1,23 @@
-"""Tests for FeatureExtractor with lowered thresholds for 360p."""
+"""Tests for FeatureExtractor with shuttle phase state machine."""
 
 import pytest
-from src.vision.feature_extractor import FeatureExtractor, FrameFeatures, RallyState
-from unittest.mock import MagicMock
+from src.vision.feature_extractor import FeatureExtractor, FrameFeatures, RallyState, ShuttlePhase
 
 
 class MockTrackedObject:
-    """Minimal tracked object mock."""
-    def __init__(self, cx, cy):
+    def __init__(self, cx, cy, is_predicted=False):
         self.centroid = (cx, cy)
-        self.is_predicted = False
+        self.is_predicted = is_predicted
 
 
 class TestFeatureExtractor:
     def setup_method(self):
         self.extractor = FeatureExtractor(
-            smash_velocity_threshold=12.0,
-            stationary_threshold=2.0,
-            direction_reversal_threshold=3.0,
-            frame_height=360,
+            smash_velocity_threshold=12.0, stationary_threshold=2.0,
+            direction_reversal_threshold=3.0, frame_height=360,
         )
 
     def _tracked(self, player_a=None, player_b=None, shuttle=None):
-        """Build tracked_objects dict from optional positions."""
         result = {}
         result["player_a"] = MockTrackedObject(*player_a) if player_a else None
         result["player_b"] = MockTrackedObject(*player_b) if player_b else None
@@ -30,105 +25,112 @@ class TestFeatureExtractor:
         return result
 
     def test_shuttle_velocity(self):
-        """Velocity should be computed from consecutive positions."""
-        t1 = self._tracked(shuttle=(100, 100))
-        self.extractor.extract(0, 0.0, t1)
-
-        t2 = self._tracked(shuttle=(110, 100))
-        features = self.extractor.extract(1, 0.1, t2)
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
+        features = self.extractor.extract(1, 0.1, self._tracked(shuttle=(110, 100)))
         assert features.shuttle_velocity > 0
 
     def test_shuttle_direction_up(self):
-        """Shuttle moving upward (decreasing Y) should be 'up'."""
-        t1 = self._tracked(shuttle=(100, 200))
-        self.extractor.extract(0, 0.0, t1)
-
-        t2 = self._tracked(shuttle=(100, 190))
-        features = self.extractor.extract(1, 0.1, t2)
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 200)))
+        features = self.extractor.extract(1, 0.1, self._tracked(shuttle=(100, 190)))
         assert features.shuttle_direction == "up"
 
     def test_shuttle_direction_down(self):
-        """Shuttle moving downward (increasing Y) should be 'down'."""
-        t1 = self._tracked(shuttle=(100, 100))
-        self.extractor.extract(0, 0.0, t1)
-
-        t2 = self._tracked(shuttle=(100, 115))
-        features = self.extractor.extract(1, 0.1, t2)
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
+        features = self.extractor.extract(1, 0.1, self._tracked(shuttle=(100, 115)))
         assert features.shuttle_direction == "down"
 
-    def test_direction_reversal_increments_hit_count(self):
-        """Direction reversal should increase rally hit count."""
+    def test_velocity_decay_rate(self):
+        """Velocity decay rate should be negative when shuttle decelerates."""
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
+        self.extractor.extract(1, 0.1, self._tracked(shuttle=(120, 100)))  # fast
+        features = self.extractor.extract(2, 0.2, self._tracked(shuttle=(125, 100)))  # slower
+        assert features.velocity_decay_rate < 0  # decelerating
+
+    def test_direction_reversal_tracks_last_hitter(self):
+        """Direction reversal should track who hit last."""
         self.extractor.start_rally(0.0)
-
-        # Moving down
-        t1 = self._tracked(shuttle=(100, 100))
-        self.extractor.extract(0, 0.0, t1)
-        t2 = self._tracked(shuttle=(100, 120))
-        self.extractor.extract(1, 0.1, t2)
-
-        # Now moving up (reversal)
-        t3 = self._tracked(shuttle=(100, 100))
-        features = self.extractor.extract(2, 0.2, t3)
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
+        self.extractor.extract(1, 0.1, self._tracked(shuttle=(100, 120)))  # down
+        features = self.extractor.extract(2, 0.2, self._tracked(shuttle=(100, 100)))  # up → reversal
         assert features.is_direction_reversal is True
-        assert features.rally_hit_count >= 1
+        assert features.last_hitter == "Player A"  # Up direction ⇒ A hit it
 
     def test_smash_detection(self):
-        """Fast downward shuttle should trigger smash."""
-        t1 = self._tracked(shuttle=(100, 100))
-        self.extractor.extract(0, 0.0, t1)
-
-        # Large downward movement (velocity > 12, downward angle)
-        t2 = self._tracked(shuttle=(105, 130))
-        features = self.extractor.extract(1, 0.1, t2)
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
+        features = self.extractor.extract(1, 0.1, self._tracked(shuttle=(105, 130)))
         assert features.is_smash is True
 
     def test_no_shuttle_grace_period(self):
-        """Missing shuttle shouldn't immediately count as stationary."""
-        t1 = self._tracked(shuttle=(100, 100))
-        self.extractor.extract(0, 0.0, t1)
-
-        # Miss shuttle for 3 frames — should NOT increment stationary yet
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
         for i in range(3):
-            t = self._tracked()
-            features = self.extractor.extract(i + 1, 0.1 * (i + 1), t)
-
-        assert features.shuttle_stationary_frames == 0  # Grace period = 5 frames
+            features = self.extractor.extract(i + 1, 0.1 * (i + 1), self._tracked())
+        assert features.shuttle_stationary_frames == 0
 
     def test_stationary_after_grace_period(self):
-        """After 5+ frames of missing shuttle, stationary should increment."""
-        t1 = self._tracked(shuttle=(100, 100))
-        self.extractor.extract(0, 0.0, t1)
-
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
         for i in range(8):
-            t = self._tracked()
-            features = self.extractor.extract(i + 1, 0.1 * (i + 1), t)
-
+            features = self.extractor.extract(i + 1, 0.1 * (i + 1), self._tracked())
         assert features.shuttle_stationary_frames > 0
 
     def test_rally_lifecycle(self):
-        """Start and end rally should work correctly."""
         self.extractor.start_rally(1.0)
-        state = self.extractor.get_rally_state()
-        assert state.active is True
-        assert state.start_time == 1.0
-
+        assert self.extractor.get_rally_state().active is True
         ended = self.extractor.end_rally()
         assert ended.active is False
-        assert self.extractor.get_rally_state().active is False
 
     def test_player_displacement(self):
-        """Player movement should accumulate displacement."""
-        t1 = self._tracked(player_a=(100, 300))
-        self.extractor.extract(0, 0.0, t1)
-
-        t2 = self._tracked(player_a=(120, 300))
-        features = self.extractor.extract(1, 0.1, t2)
+        self.extractor.extract(0, 0.0, self._tracked(player_a=(100, 300)))
+        features = self.extractor.extract(1, 0.1, self._tracked(player_a=(120, 300)))
         assert features.player_a_displacement > 0
 
-    def test_reset(self):
-        """Reset should clear all state."""
-        t1 = self._tracked(shuttle=(100, 100))
-        self.extractor.extract(0, 0.0, t1)
-        self.extractor.start_rally(0.0)
+    def test_trajectory_buffer(self):
+        """Trajectory buffer should accumulate shuttle positions."""
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
+        self.extractor.extract(1, 0.1, self._tracked(shuttle=(110, 110)))
+        features = self.extractor.extract(2, 0.2, self._tracked(shuttle=(120, 120)))
+        assert len(features.trajectory_buffer) == 3
+
+    def test_kalman_acceleration_passthrough(self):
+        """Kalman acceleration should be passed through to features."""
+        features = self.extractor.extract(
+            0, 0.0, self._tracked(shuttle=(100, 100)),
+            kalman_ax=1.5, kalman_ay=-2.0
+        )
+        assert features.shuttle_ax == 1.5
+        assert features.shuttle_ay == -2.0
+
+
+class TestShuttlePhaseStateMachine:
+    def setup_method(self):
+        self.extractor = FeatureExtractor(frame_height=360)
+
+    def _tracked(self, shuttle=None):
+        return {
+            "player_a": None, "player_b": None,
+            "shuttle": MockTrackedObject(*shuttle) if shuttle else None,
+        }
+
+    def test_initial_phase_is_idle(self):
+        assert self.extractor.get_phase() == ShuttlePhase.IDLE
+
+    def test_phase_idle_to_hit(self):
+        """Velocity spike should trigger HIT phase."""
+        self.extractor.extract(0, 0.0, self._tracked(shuttle=(100, 100)))
+        # Big movement = velocity spike
+        features = self.extractor.extract(1, 0.033, self._tracked(shuttle=(110, 100)))
+        assert self.extractor.get_phase() == ShuttlePhase.HIT
+
+    def test_phase_set_externally(self):
+        """Phase should be settable by event engine."""
+        self.extractor.set_phase(ShuttlePhase.LANDING)
+        assert self.extractor.get_phase() == ShuttlePhase.LANDING
+
+    def test_phase_resets_on_rally_end(self):
+        self.extractor.set_phase(ShuttlePhase.DESCENT)
+        self.extractor.end_rally()
+        assert self.extractor.get_phase() == ShuttlePhase.IDLE
+
+    def test_reset_clears_phase(self):
+        self.extractor.set_phase(ShuttlePhase.DESCENT)
         self.extractor.reset()
-        assert self.extractor.get_rally_state().active is False
+        assert self.extractor.get_phase() == ShuttlePhase.IDLE

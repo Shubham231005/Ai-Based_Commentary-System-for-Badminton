@@ -114,9 +114,10 @@ class CommentaryPipeline:
 
         # Set actual frame height for dynamic threshold computation
         actual_height = video._target_h
+        actual_width = video._target_w
         self.feature_extractor.update_frame_height(actual_height)
-        self.event_engine.set_frame_height(actual_height)
-        logger.info(f"Frame height set to {actual_height}px for threshold computation")
+        self.event_engine.set_frame_height(actual_height, actual_width)
+        logger.info(f"Frame dims set to {actual_width}x{actual_height}px for threshold computation")
 
         # Process each frame with split FPS
         frame_count = 0
@@ -144,11 +145,17 @@ class CommentaryPipeline:
                 frame_height=frame.shape[0],
             )
 
-            # Extract features
+            # Get Kalman acceleration estimates for landing detection
+            kalman = self.tracker.get_shuttle_kalman()
+            ax, ay = kalman.get_acceleration()
+
+            # Extract features with Kalman acceleration
             features = self.feature_extractor.extract(
                 frame_index=frame_idx,
                 timestamp=timestamp,
                 tracked_objects=tracked,
+                kalman_ax=ax,
+                kalman_ay=ay,
             )
 
             # Manage rally state
@@ -173,7 +180,7 @@ class CommentaryPipeline:
 
             # Reset rally on point_won
             for event in frame_events:
-                if event.event == "point_won":
+                if event.event in ("point_won", "net_fault", "out_of_bounds"):
                     self.feature_extractor.end_rally()
                     self.tracker.clear_shuttle_trajectory()
 

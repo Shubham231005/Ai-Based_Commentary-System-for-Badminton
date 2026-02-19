@@ -19,6 +19,7 @@ class EventType(str, Enum):
     LONG_RALLY = "long_rally"
     POINT_WON = "point_won"
     OUT_OF_BOUNDS = "out_of_bounds"
+    NET_FAULT = "net_fault"
 
 
 class Intensity(str, Enum):
