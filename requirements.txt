@@ -1,30 +1,30 @@
-# Core Dependencies
-ultralytics==8.1.0
-opencv-python==4.9.0.80
-numpy==1.24.3
-
-# AI/ML APIs
-google-generativeai==0.3.2
-google-cloud-texttospeech==2.16.1
-
-# Audio/Video Processing
-ffmpeg-python==0.2.0
-pydub==0.25.1
+# Core Dependencies - Phase 1 (Vision Foundation)
+ultralytics>=8.1.0
+opencv-python>=4.9.0
+numpy>=1.24.3
+scipy>=1.11.0
 
 # Configuration & Utils
 python-dotenv==1.0.1
 pyyaml==6.0.1
-pydantic==2.5.3
+pydantic>=2.5.0
 
-# Web Framework (Phase 3)
-fastapi==0.109.2
-uvicorn[standard]==0.27.1
+# Development & Testing
+pytest>=7.4.0
+matplotlib>=3.8.0
+pillow>=10.2.0
 
-# Development & Notebooks
-jupyter==1.0.0
-notebook==7.0.7
-matplotlib==3.8.2
-pillow==10.2.0
+# Audio/Video Processing (used in Phase 1 for video read, Phase 3 for export)
+ffmpeg-python==0.2.0
 
-# Optional - Better TTS
-elevenlabs==0.2.27
+# --- Phase 2 Dependencies (Commentary) ---
+# google-generativeai>=0.3.2
+
+# --- Phase 3 Dependencies (Audio) ---
+# google-cloud-texttospeech>=2.16.1
+# pydub>=0.25.1
+# elevenlabs>=0.2.27
+
+# --- Phase 4 Dependencies (Web UI) ---
+# fastapi>=0.109.2
+# uvicorn[standard]>=0.27.1

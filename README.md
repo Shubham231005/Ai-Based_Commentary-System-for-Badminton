@@ -1,85 +1,85 @@
-# Antigravity - AI Sports Commentary System 🎙️⚡
+# Antigravity — Event-Driven Sports Commentary Engine 🎙️🏸
 
-> *Defying traditional broadcasting with lightweight, AI-driven regional sports commentary*
+> *CV generates facts. Rules structure meaning. LLM adds emotion and style.*
 
-An AI-powered cognitive sports commentary engine that transforms video into authentic, high-energy commentary in 10+ Indian regional languages and dialects.
-
-## 🎯 Vision
-
-Build a system that understands the "spirit" of sports in regional dialects like Bhojpuri, Tamil, Haryanvi, and more—going beyond simple translation to capture the authentic energy of local sports fans.
+An event-driven commentary engine for badminton that uses **Computer Vision** to detect gameplay events, **rule-based logic** to structure meaning, and (Phase 2+) **LLM** to generate expressive commentary with audio overlay.
 
 ## 🏗️ Architecture
 
-**Three-Layer Design:**
-1. **Vision Layer** (The "Eyes") - YOLOv8n + Gemini Vision API for event detection
-2. **Reasoning Layer** (The "Brain") - Gemini 1.5 Pro for narrative generation
-3. **Audio Layer** (The "Voice") - Google Cloud TTS with prosody-aware synthesis
-
-## 🏆 Supported Sports
-
-- 🏏 Cricket
-- ⚽ Football
-- 🏎️ Formula 1
-- 🏸 Badminton
-- 🤼 Kabaddi
-
-## 🗣️ Supported Languages
-
-- Hinglish (60/40 Hindi-English)
-- Tanglish (Tamil-English)
-- Bhojpuri-English
-- Haryanvi-Hindi
-- ...and more!
-
-## 💡 Personas
-
-Choose your commentary style:
-- **Professional**: Formal, technical analysis
-- **Desi/Funny**: Humorous, meme-worthy, local flavor
-- **Analytical**: Data-driven insights
-
-## 🚀 Quick Start
-
-See [Quick Start Guide](docs/quick_start.md) for detailed setup instructions.
-
-```bash
-# Clone the repo
-git clone https://github.com/Shubham231005/Ai-Based_Commentary-System-for-MotorSports.git
-cd Ai-Based-Commentary-System
-
-# Set up environment
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-
-# Add your API keys to .env
-cp .env.example .env
-
-# Run Phase 1 demo
-jupyter notebook notebooks/phase1_f1_demo.ipynb
+```
+Video Input → Frame Extraction → YOLOv8n Detection → Centroid Tracking
+    → Feature Extraction → Rule-Based Event Engine → JSON Event Timeline
+    → [Phase 2] LLM Commentary → [Phase 3] TTS + Video Export
 ```
 
-## 📊 Hardware Requirements
+**Key Innovation**: CV extracts structured events (smash, rally, point) as the *truth layer* — no LLM involved in detection. The LLM only adds language and emotion on top of verified facts.
 
+## ⚡ Quick Start
+
+```bash
+# Setup
+python -m venv venv
+.\venv\Scripts\activate   # Windows
+pip install -r requirements.txt
+
+# Run Phase 1 — Event Detection
+python main.py --video datasets/sample_match.mp4 --player-a "Lin Dan" --player-b "Lee Chong Wei"
+
+# Run tests
+python -m pytest tests/ -v
+```
+
+## 📊 Output Example
+
+```json
+[
+  {"timestamp": 12.3, "event": "rally_start", "server": "Lin Dan", "intensity": "low"},
+  {"timestamp": 18.9, "event": "smash", "by": "Lee Chong Wei", "intensity": "high", "velocity": 35.2},
+  {"timestamp": 21.1, "event": "point_won", "by": "Lee Chong Wei", "rally_length": 18, "intensity": "maximum"}
+]
+```
+
+## 🎯 Event Types
+
+| Event | Detection Method |
+|-------|-----------------|
+| `rally_start` | Serve motion + shuttle movement |
+| `smash` | High velocity + downward angle |
+| `drop_shot` | Low velocity + steep angle near net |
+| `long_rally` | Hit count > 15 direction reversals |
+| `point_won` | Shuttle stationary for N frames |
+
+## 📁 Project Structure
+
+```
+├── main.py                    # CLI entry point
+├── config/config.yaml         # Event rules & thresholds
+├── src/
+│   ├── pipeline.py            # Pipeline orchestrator
+│   ├── vision/
+│   │   ├── video_processor.py # Frame extraction
+│   │   ├── detector.py        # YOLOv8n detection
+│   │   ├── tracker.py         # Centroid tracking
+│   │   └── feature_extractor.py
+│   └── events/
+│       ├── event_models.py    # Pydantic data models
+│       └── event_engine.py    # Rule-based classification
+└── tests/                     # 27 unit tests
+```
+
+## 💻 Hardware Requirements
+
+- **CPU**: i3 or above (no GPU needed)
 - **RAM**: 8GB minimum
-- **Processor**: i3 or better
-- **GPU**: Not required (cloud-based processing)
-- **Internet**: Required for API calls
-
-## 💰 Cost Estimation
-
-~$0.02-0.03 per 30-second video (Gemini + TTS APIs)
+- **Processing**: ~2-5 min for a 30s video at 10 FPS
 
 ## 🛣️ Roadmap
 
-- ✅ Phase 1: F1 English Commentary
-- 🚧 Phase 2: Cricket Hinglish Commentary
-- 📅 Phase 3: Multi-Sport Multi-Dialect System
+- ✅ **Phase 1**: Vision Foundation — CV event detection pipeline
+- 📅 **Phase 2**: Commentary Layer — LLM-powered narrative generation
+- 📅 **Phase 3**: Audio Integration — TTS + FFmpeg video export
+- 📅 **Phase 4**: Enhancement — Better detection, Hinglish, Web UI
 
 ## 📄 License
 
-MIT License - See LICENSE file for details
-
-## 🙌 Credits
-
-Built with ❤️ using Google Gemini, Ultralytics YOLOv8, and Google Cloud TTS
+MIT License

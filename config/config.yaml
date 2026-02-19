@@ -1,139 +1,121 @@
-# Antigravity Configuration
+# ============================================================
+# Antigravity — Event-Driven Sports Commentary Engine Config
+# ============================================================
 
 # Video Processing
 video:
-  fps: 1  # Frames per second to process (reduce for lower API costs)
-  resolution: 720  # Output resolution (480, 720, 1080)
-  
+  fps: 10               # Frames per second to extract (lower = faster, less accurate)
+  resolution: 720        # Resize target height in pixels
+  max_duration: 120      # Max video duration in seconds to process
+
 # Vision Layer
 vision:
-  yolo_model: "yolov8n.pt"  # Nano model for CPU efficiency
-  confidence_threshold: 0.5
-  track_objects: true
-  
-# Gemini API
-gemini:
-  model: "gemini-1.5-pro-latest"
-  vision_model: "gemini-1.5-pro-vision-latest"
-  temperature: 0.7
-  max_tokens: 500
-  
-# Text-to-Speech
+  yolo_model: "yolov8n.pt"     # Nano model for CPU efficiency
+  confidence_threshold: 0.35   # Lower threshold to catch fast-moving objects
+  player_confidence: 0.5       # Higher threshold for person detection
+  iou_threshold: 0.45          # NMS IoU threshold
+  device: "cpu"                # Force CPU mode
+
+# Tracker
+tracker:
+  max_disappeared: 15      # Frames before deregistering a lost object
+  max_distance: 80         # Max pixel distance for centroid matching
+  court_top_ratio: 0.5     # Y-ratio dividing court into Player A (top) / Player B (bottom)
+
+# Court Geometry (will be auto-detected or manually set)
+court:
+  # Approximate court boundary as fraction of frame dimensions
+  left: 0.15
+  right: 0.85
+  top: 0.05
+  bottom: 0.95
+  net_y: 0.5               # Approximate Y-position of the net (fraction)
+
+# Event Detection Rules
+event_rules:
+  smash:
+    min_velocity: 12.0          # Min shuttle velocity (pixels/frame) for 360p
+    max_angle_from_vertical: 45 # Degrees from vertical (downward)
+    enabled: true
+
+  long_rally:
+    min_hit_count: 8            # Minimum direction reversals for long rally
+    enabled: true
+
+  drop_shot:
+    max_velocity: 8.0           # Max shuttle velocity for drop shot
+    min_angle_from_vertical: 30 # Must be somewhat steep
+    net_proximity: 0.15         # Must be within this fraction of net Y
+    enabled: true
+
+  point_won:
+    stationary_frames: 15       # Frames shuttle must be still (higher to avoid false positives)
+    min_rally_hits: 1           # Minimum hits before a point can be scored
+    enabled: true
+
+  rally_start:
+    serve_motion_threshold: 10  # Min player arm/body displacement to detect serve
+    enabled: true
+
+# Intensity Scoring Weights
+intensity:
+  rally_length_weight: 0.35
+  velocity_weight: 0.30
+  player_movement_weight: 0.20
+  proximity_weight: 0.15
+  thresholds:
+    low: 0.25
+    medium: 0.50
+    high: 0.75
+    # Anything above 0.75 = "maximum"
+
+# Badminton Sport Config
+sport:
+  name: "badminton"
+  type: "singles"
+  scoring: "rally_point"   # Modern badminton scoring
+  max_points: 21
+  events:
+    - "rally_start"
+    - "smash"
+    - "drop_shot"
+    - "long_rally"
+    - "point_won"
+    - "out_of_bounds"
+
+# Output
+output:
+  timeline_file: "event_timeline.json"
+  debug_frames: false           # Save annotated frames for visual debugging
+  debug_frames_dir: "debug_frames"
+
+# Text-to-Speech (Phase 3)
 tts:
-  provider: "google"  # "google" or "elevenlabs"
+  provider: "google"
   google:
     language_code: "en-US"
     voice_name: "en-US-Neural2-J"
-    speaking_rate: 1.1  # Slightly faster for sports commentary
+    speaking_rate: 1.1
     pitch: 0.0
   elevenlabs:
     model_id: "eleven_multilingual_v2"
     stability: 0.5
     similarity_boost: 0.75
-    
-# Audio Mixing
-audio:
-  commentary_volume: 0.8  # 0-1
-  background_volume: 0.3  # Lower original audio during commentary
-  ducking_enabled: true
-  
-# Sports Configuration
-sports:
-  cricket:
-    events:
-      - "Wicket"
-      - "Boundary"
-      - "Six"
-      - "Run Out"
-      - "Catch"
-    intensity_keywords:
-      high: ["wicket", "six", "out", "catch"]
-      medium: ["boundary", "four"]
-      low: ["single", "dot ball"]
-      
-  football:
-    events:
-      - "Goal"
-      - "Near Miss"
-      - "Yellow Card"
-      - "Red Card"
-      - "Corner Kick"
-    intensity_keywords:
-      high: ["goal", "red card", "penalty"]
-      medium: ["yellow card", "corner", "free kick"]
-      low: ["pass", "throw in"]
-      
-  f1:
-    events:
-      - "Overtake"
-      - "Pit Stop"
-      - "Crash"
-      - "Leading"
-    intensity_keywords:
-      high: ["crash", "overtake", "podium"]
-      medium: ["pit stop", "fastest lap"]
-      low: ["cruising", "maintaining position"]
-      
-  badminton:
-    events:
-      - "Smash"
-      - "Drop Shot"
-      - "Point Won"
-    intensity_keywords:
-      high: ["smash", "match point"]
-      medium: ["rally", "deuce"]
-      low: ["serve"]
-      
-  kabaddi:
-    events:
-      - "Super Raid"
-      - "Tackle"
-      - "All Out"
-    intensity_keywords:
-      high: ["super raid", "all out"]
-      medium: ["tackle", "bonus point"]
-      low: ["empty raid"]
 
-# Language/Dialect Settings
-languages:
-  english:
-    enabled: true
-    tts_voice: "en-US-Neural2-J"
-    
-  hinglish:
-    enabled: true
-    hindi_percentage: 60
-    tts_voice: "hi-IN-Neural2-A"
-    code_mixing: true
-    
-  tamil:
-    enabled: false
-    tts_voice: "ta-IN-Standard-A"
-    
-  bhojpuri:
-    enabled: false
-    base_language: "hindi"
-    
-# Personas
-personas:
-  professional:
-    tone: "formal"
-    technical_terms: true
-    excitement_level: "moderate"
-    
-  desi:
-    tone: "casual"
-    slang: true
-    excitement_level: "high"
-    humor: true
-    
-  analytical:
-    tone: "informative"
-    stats: true
-    excitement_level: "low"
+# Audio Mixing (Phase 3)
+audio:
+  commentary_volume: 0.8
+  background_volume: 0.3
+  ducking_enabled: true
+
+# Commentary (Phase 2)
+commentary:
+  default_persona: "excited"
+  default_language: "english"
+  max_sentence_length: 2
 
 # Performance
 performance:
   cache_events: true
-  batch_api_calls: true
-  max_concurrent_requests: 3
+  batch_size: 32          # Frames to batch for YOLO inference
+  log_interval: 200       # Log progress every N frames
