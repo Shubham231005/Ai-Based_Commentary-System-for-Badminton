@@ -1,0 +1,14 @@
+# Generate annotated debug video
+python main.py --video datasets/sample_match.mp4 --debug --max-duration 30
+
+# Same + live preview window (press 'q' to close)
+python main.py --video datasets/sample_match.mp4 --debug-live --max-duration 30
+
+# Generate event timeline (JSON + text)
+python -m src.commentary.commentary_generator --timeline output/event_timeline.json
+
+# Generate commentary from timeline (uses Gemini API)
+python -m src.commentary.commentary_generator --timeline output/event_timeline.json --commentary output/commentary.json
+
+# Generate commentary with live preview (press 'q' to close)
+python -m src.commentary.commentary_generator --timeline output/event_timeline.json --commentary output/commentary.json --debug-live

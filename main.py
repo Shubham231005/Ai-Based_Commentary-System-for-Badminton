@@ -88,6 +88,27 @@ Examples:
         help="Enable verbose debug logging",
     )
     parser.add_argument(
+        "--debug-live",
+        action="store_true",
+        help="Show live debug visualization window (quit with 'q')",
+    )
+    parser.add_argument(
+        "--commentary",
+        action="store_true",
+        default=None,
+        help="Enable Hinglish commentary generation (default: uses config)",
+    )
+    parser.add_argument(
+        "--no-commentary",
+        action="store_true",
+        help="Skip commentary generation",
+    )
+    parser.add_argument(
+        "--persona",
+        default=None,
+        help="Commentary persona: hinglish_excited, analytical, casual",
+    )
+    parser.add_argument(
         "--config",
         default=None,
         help="Path to custom config.yaml (default: config/config.yaml)",
@@ -143,11 +164,34 @@ Examples:
     logger.info(f"FPS:      {video_cfg.get('fps', 10)}")
 
     # Create and run pipeline
+    debug_mode = args.debug or args.debug_live
+
+    # Commentary: CLI flags override config
+    commentary_enabled = True  # default
+    if args.no_commentary:
+        commentary_enabled = False
+    elif args.commentary:
+        commentary_enabled = True
+
+    # Override persona if specified
+    if args.persona:
+        cfg.setdefault("commentary", {})["persona"] = args.persona
+
     pipeline = CommentaryPipeline(
         config=cfg,
         player_a=args.player_a,
         player_b=args.player_b,
+        debug_mode=debug_mode,
+        debug_live=args.debug_live,
+        commentary_enabled=commentary_enabled,
     )
+
+    if debug_mode:
+        logger.info("Debug visualization mode ENABLED")
+        logger.info("  → output/debug_output.mp4 (annotated video)")
+        logger.info("  → output/debug_log.csv (per-frame data)")
+        if args.debug_live:
+            logger.info("  → Live window active (press 'q' to close)")
 
     output_path = args.output or "output/event_timeline.json"
     timeline = pipeline.run(

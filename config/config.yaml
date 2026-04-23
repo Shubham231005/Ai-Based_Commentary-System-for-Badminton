@@ -91,16 +91,19 @@ output:
 
 # Text-to-Speech (Phase 3)
 tts:
-  provider: "google"
+  provider: "elevenlabs"       # elevenlabs | gtts
   google:
     language_code: "en-US"
     voice_name: "en-US-Neural2-J"
     speaking_rate: 1.1
     pitch: 0.0
   elevenlabs:
+    voice_a_id: "pNInz6obpgDQGcFmaJgB"   # Male — Adam (free-tier pre-made)
+    voice_b_id: "21m00Tcm4TlvDq8ikWAM"   # Female — Rachel (free-tier pre-made)
     model_id: "eleven_multilingual_v2"
-    stability: 0.5
-    similarity_boost: 0.75
+    stability: 0.45             # Lower = more expressive/emotional
+    similarity_boost: 0.80
+    style: 0.65                 # Higher = more emotional delivery
 
 # Audio Mixing (Phase 3)
 audio:
@@ -110,9 +113,13 @@ audio:
 
 # Commentary (Phase 2)
 commentary:
-  default_persona: "excited"
-  default_language: "english"
-  max_sentence_length: 2
+  enabled: true
+  persona: "hinglish_excited"    # hinglish_excited | analytical | casual
+  language: "hinglish"           # hinglish | english
+  model: "gemini-2.0-flash"     # Gemini model to use
+  temperature: 0.85              # Higher = more creative/varied
+  include_match_summary: true    # Generate end-of-match summary
+
 
 # Performance
 performance:

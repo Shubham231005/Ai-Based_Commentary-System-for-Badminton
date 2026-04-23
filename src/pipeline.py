@@ -18,8 +18,11 @@ from .vision.video_processor import VideoProcessor
 from .vision.detector import ShuttlecockDetector
 from .vision.tracker import CentroidTracker
 from .vision.feature_extractor import FeatureExtractor
+from .vision.debug_visualizer import DebugVisualizer
 from .events.event_engine import EventEngine
 from .events.event_models import EventTimeline
+from .debug_event_logger import DebugEventLogger
+from .commentary.commentary_generator import CommentaryGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +41,16 @@ class CommentaryPipeline:
         config: Dict[str, Any],
         player_a: str = "Player A",
         player_b: str = "Player B",
+        debug_mode: bool = False,
+        debug_live: bool = False,
+        commentary_enabled: bool = True,
     ):
         self.config = config
         self.player_a = player_a
         self.player_b = player_b
+        self.debug_mode = debug_mode
+        self.debug_live = debug_live
+        self.commentary_enabled = commentary_enabled
 
         # Configuration sections
         video_cfg = config.get("video", {})
@@ -83,10 +92,15 @@ class CommentaryPipeline:
             player_b_name=player_b,
         )
 
+        # Debug components (initialized later when frame dims are known)
+        self._debug_visualizer: Optional[DebugVisualizer] = None
+        self._debug_logger: Optional[DebugEventLogger] = None
+
+        mode_str = "Split FPS + DEBUG" if debug_mode else "Split FPS"
         logger.info(
             f"Pipeline initialized: {player_a} vs {player_b} | "
             f"FPS={self._target_fps}, Resolution={self._resolution}p | "
-            f"Split FPS mode enabled"
+            f"{mode_str} mode enabled"
         )
 
     def run(self, video_path: str, output_path: Optional[str] = None) -> EventTimeline:
@@ -118,6 +132,20 @@ class CommentaryPipeline:
         self.feature_extractor.update_frame_height(actual_height)
         self.event_engine.set_frame_height(actual_height, actual_width)
         logger.info(f"Frame dims set to {actual_width}x{actual_height}px for threshold computation")
+
+        # Initialize debug components if debug mode is on
+        if self.debug_mode:
+            self._debug_visualizer = DebugVisualizer(
+                output_path="output/debug_output.mp4",
+                fps=video.source_fps,
+                show_live=self.debug_live,
+                player_a_name=self.player_a,
+                player_b_name=self.player_b,
+            )
+            self._debug_logger = DebugEventLogger(
+                output_path="output/debug_log.csv",
+            )
+            logger.info("Debug visualizer + CSV logger initialized")
 
         # Process each frame with split FPS
         frame_count = 0
@@ -178,6 +206,34 @@ class CommentaryPipeline:
                     f"| intensity={event.intensity}"
                 )
 
+            # ── Debug rendering ──
+            if self.debug_mode and self._debug_visualizer and self._debug_logger:
+                landing_signals = self.event_engine.get_landing_signals()
+                last_attr = self.event_engine.get_last_attribution()
+
+                self._debug_visualizer.render_frame(
+                    frame=frame,
+                    timestamp=timestamp,
+                    detections=detections,
+                    tracked_objects=tracked,
+                    features=features,
+                    events=frame_events,
+                    score_a=self.event_engine.match_state.player_a_score,
+                    score_b=self.event_engine.match_state.player_b_score,
+                    landing_signals=landing_signals if landing_signals else None,
+                    last_attribution=last_attr,
+                )
+
+                self._debug_logger.log_frame(
+                    frame_index=frame_idx,
+                    features=features,
+                    events=frame_events,
+                    score_a=self.event_engine.match_state.player_a_score,
+                    score_b=self.event_engine.match_state.player_b_score,
+                    landing_signals=landing_signals if landing_signals else None,
+                    last_attribution=last_attr,
+                )
+
             # Reset rally on point_won
             for event in frame_events:
                 if event.event in ("point_won", "net_fault", "out_of_bounds"):
@@ -220,6 +276,13 @@ class CommentaryPipeline:
             f"{'='*60}"
         )
 
+        # Finalize debug outputs
+        if self.debug_mode:
+            if self._debug_visualizer:
+                self._debug_visualizer.finalize()
+            if self._debug_logger:
+                self._debug_logger.finalize()
+
         # Save output
         if output_path:
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -232,5 +295,62 @@ class CommentaryPipeline:
             logger.info(f"Timeline saved to: {default_path}")
 
         print(timeline.summary())
+
+        # ── Phase 2: Commentary Generation ──
+        commentary_cfg = self.config.get("commentary", {})
+        commentary_json_path = None
+        if self.commentary_enabled and commentary_cfg.get("enabled", True):
+            logger.info("\n🎙️ Phase 2: Generating Hinglish commentary...")
+            try:
+                commentary_gen = CommentaryGenerator(self.config)
+                commentary = commentary_gen.generate(timeline)
+                json_path, txt_path = commentary.save("output")
+                commentary_json_path = json_path
+                logger.info(f"Commentary saved: {json_path}, {txt_path}")
+                logger.info(f"Commentary lines: {commentary.total_lines}")
+                print(f"\n🎙️ Commentary generated: {commentary.total_lines} lines")
+                print(f"   → {txt_path}")
+            except Exception as e:
+                logger.error(f"Commentary generation failed: {e}")
+
+        # ── Phase 3: TTS Audio + Video Overlay ──
+        if commentary_json_path:
+            logger.info("\n🔊 Phase 3: Generating commentary audio...")
+            try:
+                from .audio.tts_engine import TTSEngine
+
+                # Read TTS config
+                tts_cfg = self.config.get("tts", {})
+                el_cfg = tts_cfg.get("elevenlabs", {})
+
+                tts = TTSEngine(
+                    lang="hi",
+                    tts_provider=tts_cfg.get("provider", "elevenlabs"),
+                    elevenlabs_voice_a_id=el_cfg.get("voice_a_id"),
+                    elevenlabs_voice_b_id=el_cfg.get("voice_b_id"),
+                    elevenlabs_model_id=el_cfg.get("model_id", "eleven_multilingual_v2"),
+                    elevenlabs_stability=el_cfg.get("stability", 0.45),
+                    elevenlabs_similarity_boost=el_cfg.get("similarity_boost", 0.80),
+                    elevenlabs_style=el_cfg.get("style", 0.65),
+                )
+
+                audio_path = tts.generate_audio(commentary_json_path)
+                if audio_path:
+                    # Generate subtitles
+                    srt_path = tts.generate_srt(commentary_json_path)
+
+                    # Overlay audio + subtitles on video
+                    final_video = tts.overlay_on_video(
+                        video_path=video_path,
+                        audio_path=audio_path,
+                        srt_path=srt_path,
+                        max_duration=self._max_duration,
+                    )
+                    if final_video:
+                        print(f"\n🔊 Final video with commentary: {final_video}")
+            except ImportError as ie:
+                logger.warning(f"TTS dependency missing: {ie}. Run: pip install elevenlabs gTTS pydub")
+            except Exception as e:
+                logger.error(f"Audio generation failed: {e}", exc_info=True)
 
         return timeline

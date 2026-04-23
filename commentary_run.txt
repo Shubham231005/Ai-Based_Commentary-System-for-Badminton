@@ -1,0 +1,91 @@
+﻿python : __main__ | 
+Loaded timeline: 480 
+events, 63 points
+At line:1 char:1
++ python -m src.comme
+ntary.commentary_gene
+rator --timeline 
+output/event ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (__main_   
+ _ | Load...ents,    
+ 63 points:Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+__main__ | Gemini 
+initialized: 
+gemini-2.0-flash 
+(Hinglish commentary 
+mode)
+__main__ | 
+Generating Hinglish 
+commentary for 480 
+events (Player A vs 
+Player B)
+__main__ | Filtered 
+to 89 key moments 
+(from 480 total)
+__main__ | Sending 
+event timeline to 
+Gemini (single API 
+call)...
+__main__ | Gemini 
+API failed: 429 You 
+exceeded your 
+current quota, 
+please check your 
+plan and billing 
+details. For more 
+information on this 
+error, head to: https
+://ai.google.dev/gemi
+ni-api/docs/rate-limi
+ts. To monitor your 
+current usage, head 
+to: https://ai.dev/ra
+te-limit.  ù falling 
+back to templates
+__main__ | Gemini 
+summary failed: 429 
+You exceeded your 
+current quota, 
+please check your 
+plan and billing 
+details. For more 
+information on this 
+error, head to: https
+://ai.google.dev/gemi
+ni-api/docs/rate-limi
+ts. To monitor your 
+current usage, head 
+to: https://ai.dev/ra
+te-limit. 
+__main__ | 
+Commentary 
+generated: 89 lines
+
+Commentary saved:
+   JSON: output\commentary.json
+   Text: output\commentary.txt
+
+Preview (first 10 lines):
+  [00:01.7] Aur Player B phir se ready hain! Shuttle up, and here we go!
+  [00:08.1] UNBELIEVABLE SMASH! Player B ne toh aag laga di!! 105 ki ROCKET speed!! ≡ƒöÑ≡ƒöÑ
+  [00:09.2] BRILLIANT POINT by Player B! 0-1! Kya rally tha yeh! 32 shots ka rally!
+  [00:11.3] Aur point jaata hai Player B ko! Score ab 0-2!
+  [00:15.0] Yeh rally khatam hone ka naam hi nahi le rahi! 8 shots in 2.5 seconds! INTENSE!
+  [00:19.1] OH-HO-HO! Player B NE KYA MAARA HAI! 80 ki speed se goli jaisi gayi shuttle! INCREDIBLE!!
+  [00:23.2] BRILLIANT POINT by Player B! 0-3! Kya rally tha yeh! 49 shots ka rally!
+  [00:24.4] Easy point for Player A! Score: 1-3. Match aage badh raha hai!
+  [00:30.8] WHAT A SMASH! Player B on fire hai aaj! 108 speed mein gaya yeh toh!
+  [00:31.8] Player B ke khaate mein ek aur point! 1-4! Game interesting ho rahi hai!
+  ... and 79 more lines

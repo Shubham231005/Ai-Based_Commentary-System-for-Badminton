@@ -18,12 +18,13 @@ pillow>=10.2.0
 ffmpeg-python==0.2.0
 
 # --- Phase 2 Dependencies (Commentary) ---
-# google-generativeai>=0.3.2
+google-generativeai>=0.3.2
 
 # --- Phase 3 Dependencies (Audio) ---
-# google-cloud-texttospeech>=2.16.1
-# pydub>=0.25.1
-# elevenlabs>=0.2.27
+gTTS>=2.5.0
+pydub>=0.25.1
+# elevenlabs>=1.0.0
+elevenlabs>=1.0.0
 
 # --- Phase 4 Dependencies (Web UI) ---
 # fastapi>=0.109.2

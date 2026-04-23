@@ -47,6 +47,7 @@ class LandingDetector:
 
         self._prev_vel: float = 0.0
         self._prev_vy: float = 0.0
+        self._last_signals: list = []  # For debug observability
 
     def set_frame_dims(self, height: int, width: int):
         self.frame_height = height
@@ -120,6 +121,8 @@ class LandingDetector:
         self._prev_vel = vel
         self._prev_vy = vy
 
+        self._last_signals = signals  # Store for debug visualizer
+
         if not signals:
             return False, None, 0.0
 
@@ -134,6 +137,11 @@ class LandingDetector:
             return True, landing_type, total_score
 
         return False, None, total_score
+
+    @property
+    def last_signals(self) -> list:
+        """Get the last evaluated landing signals (for debug display)."""
+        return self._last_signals
 
 
 class WinnerAttribution:
@@ -351,6 +359,9 @@ class EventEngine:
         self._min_event_gap: float = 1.0
         self._last_event_times: Dict[str, float] = {}
 
+        # Debug observability
+        self._last_attribution: Optional[Dict] = None
+
         # Rally tracking
         self._rally_active = False
         self._rally_start_time: float = 0.0
@@ -537,6 +548,14 @@ class EventEngine:
                     player_b_name=self.player_b_name,
                 )
 
+                # Store for debug observability
+                self._last_attribution = {
+                    "winner": winner,
+                    "confidence": confidence,
+                    "reason": reason,
+                    "landing_type": landing_t,
+                }
+
                 # Update score
                 if winner == self.player_a_name:
                     self.match_state.player_a_score += 1
@@ -590,6 +609,14 @@ class EventEngine:
             self._timeline.add_event(event)
 
         return events
+
+    def get_landing_signals(self) -> list:
+        """Get last evaluated landing signals for debug display."""
+        return self._landing_detector.last_signals
+
+    def get_last_attribution(self) -> Optional[Dict]:
+        """Get latest winner attribution result for debug display."""
+        return self._last_attribution
 
     def finalize(self, video_path: str = "", video_duration: float = 0.0) -> EventTimeline:
         """Finalize and return the event timeline."""
